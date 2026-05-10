@@ -42,11 +42,11 @@
         <div class="hero-card">
           <h3>Что умеет система</h3>
           <div class="service-list">
-            <div class="service-item"><div><strong>Личный аккаунт</strong><small>У каждого пользователя свой локальный гараж.</small></div></div>
+            <div class="service-item"><div><strong>Личный аккаунт</strong><small>У каждого пользователя свой облачный гараж.</small></div></div>
             <div class="service-item"><div><strong>Учёт автомобилей</strong><small>Добавление нескольких автомобилей с хранением марки, модели и пробега.</small></div></div>
             <div class="service-item"><div><strong>Контроль обслуживания</strong><small>Фиксация последнего общего ТО и состояния основных расходников.</small></div></div>
             <div class="service-item"><div><strong>Автоматические статусы</strong><small>Сайт показывает состояние: норма, скоро ТО или необходимо ТО.</small></div></div>
-            <div class="service-item"><div><strong>Хранение данных</strong><small>Информация сохраняется локально в браузере пользователя.</small></div></div>
+            <div class="service-item"><div><strong>Хранение данных</strong><small>Информация сохраняется в облачной базе Firestore.</small></div></div>
           </div>
         </div>
       </div>
@@ -171,10 +171,10 @@
             <p class="muted" id="authSubtitle">Введите данные, чтобы продолжить работу с гаражом.</p>
           </div>
 
-          <label>Имя пользователя</label>
+          <label>Email</label>
           <div class="input-wrap">
             <span>👤</span>
-            <input id="authName" placeholder="Например, Ivan" />
+            <input id="authName" placeholder="Например, user@mail.ru" />
           </div>
 
           <label>Пароль</label>
@@ -247,7 +247,10 @@
     </div>
   </main>
 
-  <footer>АвтоКонтроль — frontend-only проект для учёта обслуживания автомобиля</footer>
+  <footer>АвтоКонтроль — веб-приложение для учёта обслуживания автомобиля с Firebase</footer>
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
   <script src="script.js"></script>
 </body>
 </html>

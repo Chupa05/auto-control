@@ -1,5 +1,16 @@
-const USERS_KEY = 'auto_control_users_v1';
-const CURRENT_USER_KEY = 'auto_control_current_user_v1';
+const firebaseConfig = {
+  apiKey: "AIzaSyDlagRmKWlxKTUHeDdri5TECRVkdPDdn-E",
+  authDomain: "auto-control-878a5.firebaseapp.com",
+  projectId: "auto-control-878a5",
+  storageBucket: "auto-control-878a5.firebasestorage.app",
+  messagingSenderId: "247827010967",
+  appId: "1:247827010967:web:4a4333a721dd88facb20d2"
+};
+
+firebase.initializeApp(firebaseConfig);
+
+const auth = firebase.auth();
+const db = firebase.firestore();
 
 const brandIntervals = {
   'Toyota': 10000,
@@ -23,42 +34,12 @@ const partIntervals = {
 };
 
 let authMode = 'login';
-let currentUser = loadCurrentUser();
-let state = loadState();
+let currentUser = null;
+let state = { cars: [] };
+let unsubscribeCars = null;
 
-function getUsers() {
-  const saved = localStorage.getItem(USERS_KEY);
-  return saved ? JSON.parse(saved) : [];
-}
-
-function saveUsers(users) {
-  localStorage.setItem(USERS_KEY, JSON.stringify(users));
-}
-
-function loadCurrentUser() {
-  return localStorage.getItem(CURRENT_USER_KEY);
-}
-
-function setCurrentUser(name) {
-  currentUser = name;
-  if (name) localStorage.setItem(CURRENT_USER_KEY, name);
-  else localStorage.removeItem(CURRENT_USER_KEY);
-}
-
-function getStorageKey() {
-  return currentUser ? `auto_control_data_${currentUser}` : 'auto_control_guest_data';
-}
-
-function loadState() {
-  if (!currentUser) return { cars: [] };
-  const saved = localStorage.getItem(getStorageKey());
-  return saved ? JSON.parse(saved) : { cars: [] };
-}
-
-function saveState() {
-  if (!currentUser) return;
-  localStorage.setItem(getStorageKey(), JSON.stringify(state));
-  renderAll();
+function getCarsCollection() {
+  return db.collection('users').doc(currentUser.uid).collection('cars');
 }
 
 function showAuthModal() {
@@ -83,57 +64,57 @@ function renderAuthMode() {
 
   if (authMode === 'login') {
     title.textContent = 'Вход';
-    subtitle.textContent = 'Введите данные, чтобы продолжить работу с гаражом.';
+    subtitle.textContent = 'Введите email и пароль, чтобы открыть гараж.';
     switchText.textContent = 'Нет аккаунта?';
     switchBtn.textContent = 'Зарегистрироваться';
   } else {
     title.textContent = 'Регистрация';
-    subtitle.textContent = 'Создайте локальный профиль для хранения автомобилей.';
+    subtitle.textContent = 'Создайте профиль для облачного хранения автомобилей.';
     switchText.textContent = 'Уже есть аккаунт?';
     switchBtn.textContent = 'Войти';
   }
 }
 
-function submitAuth() {
-  const name = document.getElementById('authName').value.trim();
+async function submitAuth() {
+  const email = document.getElementById('authName').value.trim();
   const password = document.getElementById('authPassword').value.trim();
 
-  if (!name || !password) {
-    alert('Введите имя пользователя и пароль');
+  if (!email || !password) {
+    alert('Введите email и пароль');
     return;
   }
 
-  const users = getUsers();
-  const found = users.find(user => user.name.toLowerCase() === name.toLowerCase());
+  try {
+    if (authMode === 'register') {
+      const userCredential = await auth.createUserWithEmailAndPassword(email, password);
 
-  if (authMode === 'register') {
-    if (found) {
-      alert('Такой пользователь уже существует');
-      return;
+      await db.collection('users').doc(userCredential.user.uid).set({
+        email,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      }, { merge: true });
+    } else {
+      await auth.signInWithEmailAndPassword(email, password);
     }
 
-    users.push({ name, password, createdAt: new Date().toISOString() });
-    saveUsers(users);
-    setCurrentUser(name);
-    state = loadState();
     closeAuthModal();
     clearAuthForm();
     showSection('garage');
-    renderAll();
-    return;
+  } catch (error) {
+    alert(getAuthErrorMessage(error));
+  }
+}
+
+function getAuthErrorMessage(error) {
+  const code = error.code || '';
+
+  if (code.includes('email-already-in-use')) return 'Такой email уже зарегистрирован';
+  if (code.includes('invalid-email')) return 'Некорректный email';
+  if (code.includes('weak-password')) return 'Пароль должен быть минимум 6 символов';
+  if (code.includes('user-not-found') || code.includes('wrong-password') || code.includes('invalid-credential')) {
+    return 'Неверный email или пароль';
   }
 
-  if (!found || found.password !== password) {
-    alert('Неверное имя пользователя или пароль');
-    return;
-  }
-
-  setCurrentUser(found.name);
-  state = loadState();
-  closeAuthModal();
-  clearAuthForm();
-  showSection('garage');
-  renderAll();
+  return 'Ошибка авторизации: ' + error.message;
 }
 
 function clearAuthForm() {
@@ -141,11 +122,8 @@ function clearAuthForm() {
   document.getElementById('authPassword').value = '';
 }
 
-function logout() {
-  setCurrentUser(null);
-  state = { cars: [] };
-  showSection('home');
-  renderAll();
+async function logout() {
+  await auth.signOut();
 }
 
 function openGarage() {
@@ -153,6 +131,7 @@ function openGarage() {
     showAuthModal();
     return;
   }
+
   showSection('garage');
 }
 
@@ -192,7 +171,7 @@ function updateBrandHint() {
     `Рекомендуемый интервал общего ТО для ${brand}: каждые ${brandIntervals[brand].toLocaleString('ru-RU')} км`;
 }
 
-function addCar() {
+async function addCar() {
   const brand = document.getElementById('carBrand').value;
   const model = document.getElementById('carModel').value.trim();
   const mileage = Number(document.getElementById('carMileage').value);
@@ -222,20 +201,23 @@ function addCar() {
     brakePads: Number(document.getElementById('brakePadsMileage').value) || lastServiceMileage
   } : null;
 
-  state.cars.push({
-    id: Date.now().toString(),
+  const carData = {
     brand,
     model,
     mileage,
     lastServiceMileage,
     interval: brandIntervals[brand],
     details,
-    createdAt: new Date().toISOString()
-  });
+    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+  };
 
-  clearCarForm();
-  closeCarModal();
-  saveState();
+  try {
+    await getCarsCollection().add(carData);
+    clearCarForm();
+    closeCarModal();
+  } catch (error) {
+    alert('Не удалось добавить автомобиль: ' + error.message);
+  }
 }
 
 function clearCarForm() {
@@ -250,17 +232,26 @@ function clearCarForm() {
   });
 }
 
-function deleteCar(id) {
+async function deleteCar(id) {
   if (!confirm('Удалить автомобиль из гаража?')) return;
-  state.cars = state.cars.filter(car => car.id !== id);
-  saveState();
+
+  try {
+    await getCarsCollection().doc(id).delete();
+  } catch (error) {
+    alert('Не удалось удалить автомобиль: ' + error.message);
+  }
 }
 
 function getStatus(currentMileage, lastMileage, interval) {
   const passed = currentMileage - lastMileage;
 
-  if (passed >= interval) return { text: 'Необходимо ТО', cls: 'status-bad', passed };
-  if (passed >= interval * 0.8) return { text: 'Скоро ТО', cls: 'status-soon', passed };
+  if (passed >= interval) {
+    return { text: 'Необходимо ТО', cls: 'status-bad', passed };
+  }
+
+  if (passed >= interval * 0.8) {
+    return { text: 'Скоро ТО', cls: 'status-soon', passed };
+  }
 
   return { text: 'Норма', cls: 'status-ok', passed };
 }
@@ -289,6 +280,7 @@ function renderGarage() {
 
     const details = car.details ? Object.entries(partIntervals).map(([key, item]) => {
       const status = getStatus(car.mileage, car.details[key], item.interval);
+
       return `
         <div class="status-row">
           <span>${item.title}<br><small class="muted">после замены: ${status.passed.toLocaleString('ru-RU')} км</small></span>
@@ -311,7 +303,9 @@ function renderGarage() {
           <div class="status-row">
             <span>
               Общее ТО<br>
-              <small class="muted">интервал: ${car.interval.toLocaleString('ru-RU')} км · прошло: ${general.passed.toLocaleString('ru-RU')} км</small>
+              <small class="muted">
+                интервал: ${car.interval.toLocaleString('ru-RU')} км · прошло: ${general.passed.toLocaleString('ru-RU')} км
+              </small>
             </span>
             <span class="status-pill ${general.cls}">${general.text}</span>
           </div>
@@ -330,9 +324,14 @@ function renderGarage() {
 
 function renderStats() {
   document.getElementById('statCars').textContent = currentUser ? state.cars.length : 0;
-  document.getElementById('statServices').textContent = currentUser ? state.cars.filter(car => car.details).length : 0;
 
-  const mileage = currentUser ? state.cars.reduce((sum, car) => sum + Number(car.mileage || 0), 0) : 0;
+  const detailedCount = currentUser ? state.cars.filter(car => car.details).length : 0;
+  document.getElementById('statServices').textContent = detailedCount;
+
+  const mileage = currentUser
+    ? state.cars.reduce((sum, car) => sum + Number(car.mileage || 0), 0)
+    : 0;
+
   document.getElementById('statMileage').textContent = mileage.toLocaleString('ru-RU');
 }
 
@@ -347,7 +346,7 @@ function renderAuthUI() {
     logoutBtn.style.display = 'inline-block';
     garageBtn.style.display = 'inline-block';
     userBadge.style.display = 'inline-flex';
-    userBadge.textContent = `Пользователь: ${currentUser}`;
+    userBadge.textContent = `Пользователь: ${currentUser.email}`;
   } else {
     authBtn.style.display = 'inline-block';
     logoutBtn.style.display = 'none';
@@ -357,10 +356,48 @@ function renderAuthUI() {
   }
 }
 
+function listenUserCars() {
+  if (unsubscribeCars) {
+    unsubscribeCars();
+    unsubscribeCars = null;
+  }
+
+  if (!currentUser) {
+    state = { cars: [] };
+    renderAll();
+    return;
+  }
+
+  unsubscribeCars = getCarsCollection()
+    .orderBy('createdAt', 'desc')
+    .onSnapshot(snapshot => {
+      state.cars = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+
+      renderAll();
+    }, error => {
+      alert('Ошибка загрузки гаража: ' + error.message);
+    });
+}
+
 function renderAll() {
   renderAuthUI();
   renderStats();
   renderGarage();
 }
 
-renderAll();
+auth.onAuthStateChanged(user => {
+  currentUser = user;
+
+  if (!user) {
+    state = { cars: [] };
+    if (document.getElementById('garage').classList.contains('active')) {
+      showSection('home');
+    }
+  }
+
+  listenUserCars();
+  renderAll();
+});
