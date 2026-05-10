@@ -221,6 +221,46 @@
         <input id="lastServiceMileage" type="number" placeholder="110000" />
 
         <label class="checkbox-line">
+          <input id="customIntervalsToggle" type="checkbox" onchange="toggleCustomIntervals()" />
+          <span>Настроить интервалы ТО вручную</span>
+        </label>
+
+        <div id="customIntervalsBlock" class="details-box">
+          <p class="muted">
+            Если не указывать свои значения, сайт будет использовать усреднённые интервалы:
+            масло — 10 000 км, воздушный фильтр — 15 000 км, топливный фильтр — 30 000 км,
+            колодки — 35 000 км.
+          </p>
+
+          <div class="grid">
+            <div>
+              <label>Общее ТО, км</label>
+              <input id="customGeneralTO" type="number" placeholder="10000" />
+            </div>
+            <div>
+              <label>Масло, км</label>
+              <input id="customOilInterval" type="number" placeholder="10000" />
+            </div>
+            <div>
+              <label>Масляный фильтр, км</label>
+              <input id="customOilFilterInterval" type="number" placeholder="10000" />
+            </div>
+            <div>
+              <label>Топливный фильтр, км</label>
+              <input id="customFuelFilterInterval" type="number" placeholder="30000" />
+            </div>
+            <div>
+              <label>Воздушный фильтр, км</label>
+              <input id="customAirFilterInterval" type="number" placeholder="15000" />
+            </div>
+            <div>
+              <label>Тормозные колодки, км</label>
+              <input id="customBrakePadsInterval" type="number" placeholder="35000" />
+            </div>
+          </div>
+        </div>
+
+        <label class="checkbox-line">
           <input id="detailsToggle" type="checkbox" onchange="toggleDetails()" />
           <span>Подробно указать замену расходников</span>
         </label>

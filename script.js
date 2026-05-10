@@ -77,6 +77,24 @@ function getDefaultRegulationForBrand(brand) {
   };
 }
 
+function getCustomRegulations(baseRegulations) {
+  const customToggle = document.getElementById('customIntervalsToggle');
+
+  if (!customToggle || !customToggle.checked) {
+    return baseRegulations;
+  }
+
+  return {
+    generalTO: Number(document.getElementById('customGeneralTO').value) || baseRegulations.generalTO,
+    oil: Number(document.getElementById('customOilInterval').value) || baseRegulations.oil,
+    oilFilter: Number(document.getElementById('customOilFilterInterval').value) || baseRegulations.oilFilter,
+    fuelFilter: Number(document.getElementById('customFuelFilterInterval').value) || baseRegulations.fuelFilter,
+    airFilter: Number(document.getElementById('customAirFilterInterval').value) || baseRegulations.airFilter,
+    brakePads: Number(document.getElementById('customBrakePadsInterval').value) || baseRegulations.brakePads
+  };
+}
+
+
 async function getRegulationForCar(brand, model) {
   const fallback = getDefaultRegulationForBrand(brand);
 
@@ -320,6 +338,11 @@ function toggleDetails() {
   document.getElementById('detailsBlock').classList.toggle('active', detailsToggle.checked);
 }
 
+function toggleCustomIntervals() {
+  const customToggle = document.getElementById('customIntervalsToggle');
+  document.getElementById('customIntervalsBlock').classList.toggle('active', customToggle.checked);
+}
+
 function updateBrandHint() {
   const brand = document.getElementById('carBrand').value;
   const model = document.getElementById('carModel').value;
@@ -360,7 +383,8 @@ async function addCar() {
     return;
   }
 
-  const regulations = await getRegulationForCar(brand, model);
+  const baseRegulations = await getRegulationForCar(brand, model);
+  const regulations = getCustomRegulations(baseRegulations);
 
   const details = hasDetails ? {
     oil: Number(document.getElementById('oilMileage').value) || lastServiceMileage,
@@ -377,6 +401,7 @@ async function addCar() {
     lastServiceMileage,
     interval: regulations.generalTO,
     regulations,
+    customIntervals: document.getElementById('customIntervalsToggle').checked,
     details,
     createdAt: firebase.firestore.FieldValue.serverTimestamp()
   };
@@ -399,10 +424,12 @@ function clearCarForm() {
   document.getElementById('brandHint').textContent = '';
   document.getElementById('carMileage').value = '';
   document.getElementById('lastServiceMileage').value = '';
+  document.getElementById('customIntervalsToggle').checked = false;
+  document.getElementById('customIntervalsBlock').classList.remove('active');
   document.getElementById('detailsToggle').checked = false;
   document.getElementById('detailsBlock').classList.remove('active');
 
-  ['oilMileage', 'oilFilterMileage', 'fuelFilterMileage', 'airFilterMileage', 'brakePadsMileage'].forEach(id => {
+  ['customGeneralTO', 'customOilInterval', 'customOilFilterInterval', 'customFuelFilterInterval', 'customAirFilterInterval', 'customBrakePadsInterval', 'oilMileage', 'oilFilterMileage', 'fuelFilterMileage', 'airFilterMileage', 'brakePadsMileage'].forEach(id => {
     document.getElementById(id).value = '';
   });
 }
@@ -488,6 +515,7 @@ function renderGarage() {
           <span class="status-pill ${general.cls}">${general.text}</span>
         </div>
 
+        ${car.customIntervals ? '<div class="interval-note">Для этой машины используются индивидуальные интервалы ТО</div>' : '<div class="interval-note">Используются усреднённые интервалы ТО</div>'}
         <div class="service-list">
           <div class="status-row">
             <span>
