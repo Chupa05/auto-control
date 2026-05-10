@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>АвтоКонтроль — учёт обслуживания автомобиля</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <div class="nav">
+      <div class="logo">Авто<span>Контроль</span></div>
+      <div class="menu">
+        <button onclick="showSection('home')">Главная</button>
+        <button id="garageBtn" onclick="showSection('garage')" style="display:none">Гараж</button>
+        <button id="authBtn" onclick="showAuthModal()">Войти</button>
+        <button id="logoutBtn" onclick="logout()" style="display:none">Выйти</button>
+      </div>
+      <div id="userBadge" class="user-badge" style="display:none"></div>
+    </div>
+  </header>
+
+  <main>
+    <section id="home" class="section active">
+      <div class="hero">
+        <div>
+          <h1>Контроль пробега и обслуживания автомобиля</h1>
+          <p>
+            АвтоКонтроль — современное веб-приложение для владельцев автомобилей,
+            позволяющее хранить полную историю обслуживания транспортных средств,
+            контролировать пробег и своевременно отслеживать технические работы.
+          </p>
+          <button class="btn primary" onclick="openGarage()">Открыть гараж</button>
+
+          <div class="stats">
+            <div class="stat"><strong id="statCars">0</strong><span>авто</span></div>
+            <div class="stat"><strong id="statServices">0</strong><span>с подробным ТО</span></div>
+            <div class="stat"><strong id="statMileage">0</strong><span>км всего</span></div>
+          </div>
+        </div>
+
+        <div class="hero-card">
+          <h3>Что умеет система</h3>
+          <div class="service-list">
+            <div class="service-item"><div><strong>Личный аккаунт</strong><small>У каждого пользователя свой локальный гараж.</small></div></div>
+            <div class="service-item"><div><strong>Учёт автомобилей</strong><small>Добавление нескольких автомобилей с хранением марки, модели и пробега.</small></div></div>
+            <div class="service-item"><div><strong>Контроль обслуживания</strong><small>Фиксация последнего общего ТО и состояния основных расходников.</small></div></div>
+            <div class="service-item"><div><strong>Автоматические статусы</strong><small>Сайт показывает состояние: норма, скоро ТО или необходимо ТО.</small></div></div>
+            <div class="service-item"><div><strong>Хранение данных</strong><small>Информация сохраняется локально в браузере пользователя.</small></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="info-grid">
+        <div class="card colorful blue">
+          <div class="card-icon">🚗</div>
+          <h3>Назначение системы</h3>
+          <p class="muted">Приложение помогает владельцам автомобилей контролировать техническое состояние транспортного средства, вести цифровую сервисную историю и не забывать о плановом обслуживании.</p>
+          <div class="badge">Контроль ТО</div>
+        </div>
+
+        <div class="card colorful green">
+          <div class="card-icon">🛠️</div>
+          <h3>Преимущества приложения</h3>
+          <p class="muted">Все записи о ремонтах и обслуживании собраны в одном месте. Пользователь может быстро посмотреть историю автомобиля, текущий пробег и последние выполненные работы.</p>
+          <div class="badge">История обслуживания</div>
+        </div>
+
+        <div class="card colorful yellow">
+          <div class="card-icon">💻</div>
+          <h3>Удобство использования</h3>
+          <p class="muted">Вся информация по автомобилю находится в одном месте: пробег, история замен, выполненные работы и заметки владельца. Не нужно хранить записи в блокнотах или заметках телефона.</p>
+          <div class="badge">Удобный доступ с любого устройства</div>
+        </div>
+      </div>
+
+      <div class="card capabilities">
+        <div class="section-title">
+          <div>
+            <h2>Основные возможности</h2>
+            <p class="muted">Ключевой функционал информационной системы</p>
+          </div>
+        </div>
+
+        <div class="grid feature-grid">
+          <div class="service-item feature-card">
+            <div>
+              <div class="feature-icon">🚘</div>
+              <strong>Добавление автомобилей</strong>
+              <small>Хранение данных о нескольких транспортных средствах пользователя.</small>
+            </div>
+          </div>
+
+          <div class="service-item feature-card">
+            <div>
+              <div class="feature-icon">📈</div>
+              <strong>Учёт пробега</strong>
+              <small>Фиксация текущего пробега автомобиля и расчёт состояния ТО.</small>
+            </div>
+          </div>
+
+          <div class="service-item feature-card">
+            <div>
+              <div class="feature-icon">⏰</div>
+              <strong>Планирование ТО</strong>
+              <small>Контроль интервалов между заменой расходников и техническими работами.</small>
+            </div>
+          </div>
+
+          <div class="service-item feature-card">
+            <div>
+              <div class="feature-icon">📱</div>
+              <strong>Адаптивный интерфейс</strong>
+              <small>Корректная работа приложения на смартфонах, планшетах и компьютерах.</small>
+            </div>
+          </div>
+
+          <div class="service-item feature-card">
+            <div>
+              <div class="feature-icon">📚</div>
+              <strong>Цифровая сервисная книжка</strong>
+              <small>Формирование электронной истории обслуживания автомобиля.</small>
+            </div>
+          </div>
+
+          <div class="service-item feature-card">
+            <div>
+              <div class="feature-icon">🔐</div>
+              <strong>Личный гараж</strong>
+              <small>После входа каждый пользователь видит только свои автомобили.</small>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <section id="garage" class="section">
+      <div class="section-title">
+        <div>
+          <h2>Гараж</h2>
+          <p class="muted">Здесь хранятся автомобили, пробег и состояние основных расходников.</p>
+        </div>
+      </div>
+      <div id="garageGrid" class="grid"></div>
+    </section>
+
+    <div id="authModal" class="modal">
+      <div class="modal-window auth-window auth-card">
+        <button class="close-btn auth-close" onclick="closeAuthModal()">×</button>
+
+        <div class="auth-promo">
+          <div class="auth-icon">🚘</div>
+          <h2>Личный гараж</h2>
+          <p>
+            Войдите в аккаунт, чтобы хранить автомобили, пробег и состояние ТО
+            в отдельном профиле.
+          </p>
+
+          <div class="auth-benefits">
+            <div>✅ Отдельный гараж для каждого пользователя</div>
+            <div>🛠️ Контроль масла, фильтров и колодок</div>
+            <div>📈 Автоматический расчёт состояния ТО</div>
+          </div>
+        </div>
+
+        <div class="auth-form">
+          <div class="auth-head">
+            <span class="badge">АвтоКонтроль</span>
+            <h2 id="authTitle">Вход</h2>
+            <p class="muted" id="authSubtitle">Введите данные, чтобы продолжить работу с гаражом.</p>
+          </div>
+
+          <label>Имя пользователя</label>
+          <div class="input-wrap">
+            <span>👤</span>
+            <input id="authName" placeholder="Например, Ivan" />
+          </div>
+
+          <label>Пароль</label>
+          <div class="input-wrap">
+            <span>🔒</span>
+            <input id="authPassword" type="password" placeholder="Введите пароль" />
+          </div>
+
+          <button class="btn primary auth-submit" onclick="submitAuth()">Продолжить</button>
+
+          <p class="muted auth-switch">
+            <span id="authSwitchText">Нет аккаунта?</span>
+            <button class="link-btn" onclick="toggleAuthMode()">Зарегистрироваться</button>
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div id="carModal" class="modal">
+      <div class="modal-window">
+        <div class="section-title">
+          <div>
+            <h2>Добавить автомобиль</h2>
+            <p class="muted">Укажите основные данные и последнее техническое обслуживание.</p>
+          </div>
+          <button class="close-btn" onclick="closeCarModal()">×</button>
+        </div>
+
+        <label>Марка автомобиля</label>
+        <select id="carBrand" onchange="updateBrandHint()">
+          <option value="Toyota">Toyota</option>
+          <option value="BMW">BMW</option>
+          <option value="Mercedes-Benz">Mercedes-Benz</option>
+          <option value="Volkswagen">Volkswagen</option>
+          <option value="Hyundai">Hyundai</option>
+          <option value="Kia">Kia</option>
+          <option value="Lada">Lada</option>
+          <option value="Renault">Renault</option>
+          <option value="Nissan">Nissan</option>
+          <option value="Ford">Ford</option>
+        </select>
+        <p id="brandHint" class="muted"></p>
+
+        <label>Модель</label>
+        <input id="carModel" placeholder="Например, Camry" />
+
+        <label>Текущий пробег, км</label>
+        <input id="carMileage" type="number" placeholder="120000" />
+
+        <label>Пробег на момент последнего общего ТО, км</label>
+        <input id="lastServiceMileage" type="number" placeholder="110000" />
+
+        <label class="checkbox-line">
+          <input id="detailsToggle" type="checkbox" onchange="toggleDetails()" />
+          <span>Подробно указать замену расходников</span>
+        </label>
+
+        <div id="detailsBlock" class="details-box">
+          <div class="grid">
+            <div><label>Масло, км замены</label><input id="oilMileage" type="number" placeholder="110000" /></div>
+            <div><label>Масляный фильтр, км замены</label><input id="oilFilterMileage" type="number" placeholder="110000" /></div>
+            <div><label>Топливный фильтр, км замены</label><input id="fuelFilterMileage" type="number" placeholder="90000" /></div>
+            <div><label>Воздушный фильтр, км замены</label><input id="airFilterMileage" type="number" placeholder="105000" /></div>
+            <div><label>Тормозные колодки, км замены</label><input id="brakePadsMileage" type="number" placeholder="95000" /></div>
+          </div>
+        </div>
+
+        <button class="btn primary" onclick="addCar()">Добавить в гараж</button>
+      </div>
+    </div>
+  </main>
+
+  <footer>АвтоКонтроль — frontend-only проект для учёта обслуживания автомобиля</footer>
+  <script src="script.js"></script>
+</body>
+</html>
