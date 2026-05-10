@@ -107,19 +107,29 @@ async function loadVehicleMakes() {
   if (!select) return;
 
   select.disabled = true;
-  select.innerHTML = '<option value="">Загрузка марок...</option>';
+  select.innerHTML = '<option value="">Загрузка марок из API...</option>';
 
   try {
     const response = await fetch(`${NHTSA_BASE_URL}/GetMakesForVehicleType/car?format=json`);
+
+    if (!response.ok) {
+      throw new Error('API недоступен');
+    }
+
     const data = await response.json();
 
     availableMakes = [...new Set(
       data.Results
-        .map(item => normalizeText(item.MakeName))
+        .map(item => normalizeText(item.MakeName || item.Make_Name || item.make_name))
         .filter(Boolean)
     )].sort((a, b) => a.localeCompare(b, 'ru'));
 
+    if (!availableMakes.length) {
+      throw new Error('API вернул пустой список');
+    }
+
     renderMakeOptions(availableMakes);
+    console.log(`Загружено марок из API: ${availableMakes.length}`);
   } catch (error) {
     console.warn('Не удалось загрузить марки из API, используется запасной список:', error);
     renderMakeOptions(fallbackMakes);
@@ -161,7 +171,7 @@ async function loadModelsForBrand(brand) {
 
     const models = [...new Set(
       data.Results
-        .map(item => normalizeText(item.Model_Name))
+        .map(item => normalizeText(item.Model_Name || item.ModelName || item.model_name))
         .filter(Boolean)
     )].sort((a, b) => a.localeCompare(b, 'ru'));
 
@@ -297,10 +307,7 @@ function openCarModal() {
 
   document.getElementById('carModal').classList.add('active');
 
-  if (!availableMakes.length) {
-    loadVehicleMakes();
-  }
-
+  loadVehicleMakes();
   updateBrandHint();
 }
 
