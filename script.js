@@ -12,31 +12,174 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 
+const NHTSA_BASE_URL = 'https://vpic.nhtsa.dot.gov/api/vehicles';
+
+const fallbackMakes = [
+  'Toyota', 'BMW', 'Mercedes-Benz', 'Volkswagen', 'Hyundai',
+  'Kia', 'Lada', 'Renault', 'Nissan', 'Ford', 'Honda', 'Mazda',
+  'Audi', 'Lexus', 'Skoda', 'Chevrolet'
+];
+
 const brandIntervals = {
-  'Toyota': 10000,
+  'TOYOTA': 10000,
   'BMW': 8000,
-  'Mercedes-Benz': 10000,
-  'Volkswagen': 10000,
-  'Hyundai': 10000,
-  'Kia': 10000,
-  'Lada': 7500,
-  'Renault': 10000,
-  'Nissan': 10000,
-  'Ford': 10000
+  'MERCEDES-BENZ': 10000,
+  'MERCEDES BENZ': 10000,
+  'VOLKSWAGEN': 10000,
+  'HYUNDAI': 10000,
+  'KIA': 10000,
+  'LADA': 7500,
+  'RENAULT': 10000,
+  'NISSAN': 10000,
+  'FORD': 10000,
+  'HONDA': 10000,
+  'MAZDA': 10000,
+  'AUDI': 10000,
+  'LEXUS': 10000,
+  'SKODA': 10000,
+  'CHEVROLET': 10000
 };
 
-const partIntervals = {
-  oil: { title: 'Масло', interval: 10000 },
-  oilFilter: { title: 'Масляный фильтр', interval: 10000 },
-  fuelFilter: { title: 'Топливный фильтр', interval: 30000 },
-  airFilter: { title: 'Воздушный фильтр', interval: 15000 },
-  brakePads: { title: 'Тормозные колодки', interval: 35000 }
+const defaultRegulation = {
+  generalTO: 10000,
+  oil: 10000,
+  oilFilter: 10000,
+  fuelFilter: 30000,
+  airFilter: 15000,
+  brakePads: 35000
 };
 
 let authMode = 'login';
 let currentUser = null;
 let state = { cars: [] };
 let unsubscribeCars = null;
+let availableMakes = [];
+
+function normalizeText(value) {
+  return String(value || '').trim();
+}
+
+function makeDocId(brand, model) {
+  return `${normalizeText(brand)}_${normalizeText(model)}`
+    .replace(/[^\wа-яА-ЯёЁ]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+}
+
+function getDefaultRegulationForBrand(brand) {
+  const key = normalizeText(brand).toUpperCase();
+  const generalTO = brandIntervals[key] || defaultRegulation.generalTO;
+
+  return {
+    ...defaultRegulation,
+    generalTO,
+    oil: generalTO,
+    oilFilter: generalTO
+  };
+}
+
+async function getRegulationForCar(brand, model) {
+  const fallback = getDefaultRegulationForBrand(brand);
+
+  try {
+    const docId = makeDocId(brand, model);
+    const doc = await db.collection('serviceRegulations').doc(docId).get();
+
+    if (!doc.exists) return fallback;
+
+    const data = doc.data();
+
+    return {
+      generalTO: Number(data.generalTO) || fallback.generalTO,
+      oil: Number(data.oil) || fallback.oil,
+      oilFilter: Number(data.oilFilter) || fallback.oilFilter,
+      fuelFilter: Number(data.fuelFilter) || fallback.fuelFilter,
+      airFilter: Number(data.airFilter) || fallback.airFilter,
+      brakePads: Number(data.brakePads) || fallback.brakePads
+    };
+  } catch (error) {
+    console.warn('Не удалось загрузить точный регламент, используется базовый:', error);
+    return fallback;
+  }
+}
+
+async function loadVehicleMakes() {
+  const select = document.getElementById('carBrand');
+  if (!select) return;
+
+  select.disabled = true;
+  select.innerHTML = '<option value="">Загрузка марок...</option>';
+
+  try {
+    const response = await fetch(`${NHTSA_BASE_URL}/GetMakesForVehicleType/car?format=json`);
+    const data = await response.json();
+
+    availableMakes = [...new Set(
+      data.Results
+        .map(item => normalizeText(item.MakeName))
+        .filter(Boolean)
+    )].sort((a, b) => a.localeCompare(b, 'ru'));
+
+    renderMakeOptions(availableMakes);
+  } catch (error) {
+    console.warn('Не удалось загрузить марки из API, используется запасной список:', error);
+    renderMakeOptions(fallbackMakes);
+  }
+}
+
+function renderMakeOptions(makes) {
+  const select = document.getElementById('carBrand');
+  if (!select) return;
+
+  select.disabled = false;
+  select.innerHTML = '<option value="">Выберите марку</option>' + makes.map(make => `
+    <option value="${make}">${make}</option>
+  `).join('');
+}
+
+async function handleBrandChange() {
+  const brand = document.getElementById('carBrand').value;
+  await loadModelsForBrand(brand);
+  updateBrandHint();
+}
+
+async function loadModelsForBrand(brand) {
+  const modelSelect = document.getElementById('carModel');
+  if (!modelSelect) return;
+
+  if (!brand) {
+    modelSelect.disabled = true;
+    modelSelect.innerHTML = '<option value="">Сначала выберите марку</option>';
+    return;
+  }
+
+  modelSelect.disabled = true;
+  modelSelect.innerHTML = '<option value="">Загрузка моделей...</option>';
+
+  try {
+    const response = await fetch(`${NHTSA_BASE_URL}/GetModelsForMake/${encodeURIComponent(brand)}?format=json`);
+    const data = await response.json();
+
+    const models = [...new Set(
+      data.Results
+        .map(item => normalizeText(item.Model_Name))
+        .filter(Boolean)
+    )].sort((a, b) => a.localeCompare(b, 'ru'));
+
+    if (!models.length) {
+      modelSelect.innerHTML = '<option value="">Модели не найдены</option>';
+      return;
+    }
+
+    modelSelect.disabled = false;
+    modelSelect.innerHTML = '<option value="">Выберите модель</option>' + models.map(model => `
+      <option value="${model}">${model}</option>
+    `).join('');
+  } catch (error) {
+    console.warn('Не удалось загрузить модели:', error);
+    modelSelect.disabled = false;
+    modelSelect.innerHTML = '<option value="">Не удалось загрузить модели</option>';
+  }
+}
 
 function getCarsCollection() {
   return db.collection('users').doc(currentUser.uid).collection('cars');
@@ -153,6 +296,11 @@ function openCarModal() {
   }
 
   document.getElementById('carModal').classList.add('active');
+
+  if (!availableMakes.length) {
+    loadVehicleMakes();
+  }
+
   updateBrandHint();
 }
 
@@ -167,13 +315,25 @@ function toggleDetails() {
 
 function updateBrandHint() {
   const brand = document.getElementById('carBrand').value;
-  document.getElementById('brandHint').textContent =
-    `Рекомендуемый интервал общего ТО для ${brand}: каждые ${brandIntervals[brand].toLocaleString('ru-RU')} км`;
+  const model = document.getElementById('carModel').value;
+  const regulation = getDefaultRegulationForBrand(brand);
+
+  const hint = document.getElementById('brandHint');
+  if (!hint) return;
+
+  if (!brand) {
+    hint.textContent = 'Выберите марку, чтобы увидеть базовый интервал ТО.';
+    return;
+  }
+
+  hint.textContent = model
+    ? `Для ${brand} ${model} будет использован базовый интервал ТО: ${regulation.generalTO.toLocaleString('ru-RU')} км. Если в Firestore есть точный регламент для этой модели, сайт возьмёт его.`
+    : `Базовый интервал ТО для ${brand}: каждые ${regulation.generalTO.toLocaleString('ru-RU')} км`;
 }
 
 async function addCar() {
   const brand = document.getElementById('carBrand').value;
-  const model = document.getElementById('carModel').value.trim();
+  const model = document.getElementById('carModel').value;
   const mileage = Number(document.getElementById('carMileage').value);
   const lastServiceMileage = Number(document.getElementById('lastServiceMileage').value);
   const hasDetails = document.getElementById('detailsToggle').checked;
@@ -193,6 +353,8 @@ async function addCar() {
     return;
   }
 
+  const regulations = await getRegulationForCar(brand, model);
+
   const details = hasDetails ? {
     oil: Number(document.getElementById('oilMileage').value) || lastServiceMileage,
     oilFilter: Number(document.getElementById('oilFilterMileage').value) || lastServiceMileage,
@@ -206,7 +368,8 @@ async function addCar() {
     model,
     mileage,
     lastServiceMileage,
-    interval: brandIntervals[brand],
+    interval: regulations.generalTO,
+    regulations,
     details,
     createdAt: firebase.firestore.FieldValue.serverTimestamp()
   };
@@ -221,7 +384,12 @@ async function addCar() {
 }
 
 function clearCarForm() {
-  document.getElementById('carModel').value = '';
+  document.getElementById('carBrand').value = '';
+  const modelSelect = document.getElementById('carModel');
+  modelSelect.disabled = true;
+  modelSelect.innerHTML = '<option value="">Сначала выберите марку</option>';
+
+  document.getElementById('brandHint').textContent = '';
   document.getElementById('carMileage').value = '';
   document.getElementById('lastServiceMileage').value = '';
   document.getElementById('detailsToggle').checked = false;
@@ -256,6 +424,18 @@ function getStatus(currentMileage, lastMileage, interval) {
   return { text: 'Норма', cls: 'status-ok', passed };
 }
 
+function getPartDefinitionsForCar(car) {
+  const regulations = car.regulations || getDefaultRegulationForBrand(car.brand);
+
+  return {
+    oil: { title: 'Масло', interval: regulations.oil || defaultRegulation.oil },
+    oilFilter: { title: 'Масляный фильтр', interval: regulations.oilFilter || defaultRegulation.oilFilter },
+    fuelFilter: { title: 'Топливный фильтр', interval: regulations.fuelFilter || defaultRegulation.fuelFilter },
+    airFilter: { title: 'Воздушный фильтр', interval: regulations.airFilter || defaultRegulation.airFilter },
+    brakePads: { title: 'Тормозные колодки', interval: regulations.brakePads || defaultRegulation.brakePads }
+  };
+}
+
 function renderGarage() {
   const container = document.getElementById('garageGrid');
   if (!container) return;
@@ -270,20 +450,22 @@ function renderGarage() {
       <div>
         <div class="plus-circle">+</div>
         <h3>Добавить автомобиль</h3>
-        <p class="muted">Марка, модель, пробег, последнее ТО и состояние расходников</p>
+        <p class="muted">Марка и модель подтягиваются из автомобильной API-базы</p>
       </div>
     </div>
   `;
 
   const carCards = state.cars.map(car => {
-    const general = getStatus(car.mileage, car.lastServiceMileage, car.interval);
+    const generalInterval = car.interval || car.regulations?.generalTO || defaultRegulation.generalTO;
+    const general = getStatus(car.mileage, car.lastServiceMileage, generalInterval);
+    const partDefinitions = getPartDefinitionsForCar(car);
 
-    const details = car.details ? Object.entries(partIntervals).map(([key, item]) => {
+    const details = car.details ? Object.entries(partDefinitions).map(([key, item]) => {
       const status = getStatus(car.mileage, car.details[key], item.interval);
 
       return `
         <div class="status-row">
-          <span>${item.title}<br><small class="muted">после замены: ${status.passed.toLocaleString('ru-RU')} км</small></span>
+          <span>${item.title}<br><small class="muted">интервал: ${item.interval.toLocaleString('ru-RU')} км · после замены: ${status.passed.toLocaleString('ru-RU')} км</small></span>
           <span class="status-pill ${status.cls}">${status.text}</span>
         </div>
       `;
@@ -294,7 +476,7 @@ function renderGarage() {
         <div class="car-title">
           <div>
             <h3>${car.brand} ${car.model}</h3>
-            <p class="muted">Текущий пробег: ${car.mileage.toLocaleString('ru-RU')} км</p>
+            <p class="muted">Текущий пробег: ${Number(car.mileage).toLocaleString('ru-RU')} км</p>
           </div>
           <span class="status-pill ${general.cls}">${general.text}</span>
         </div>
@@ -304,7 +486,7 @@ function renderGarage() {
             <span>
               Общее ТО<br>
               <small class="muted">
-                интервал: ${car.interval.toLocaleString('ru-RU')} км · прошло: ${general.passed.toLocaleString('ru-RU')} км
+                интервал: ${generalInterval.toLocaleString('ru-RU')} км · прошло: ${general.passed.toLocaleString('ru-RU')} км
               </small>
             </span>
             <span class="status-pill ${general.cls}">${general.text}</span>
@@ -400,4 +582,8 @@ auth.onAuthStateChanged(user => {
 
   listenUserCars();
   renderAll();
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+  loadVehicleMakes();
 });

@@ -204,22 +204,15 @@
         </div>
 
         <label>Марка автомобиля</label>
-        <select id="carBrand" onchange="updateBrandHint()">
-          <option value="Toyota">Toyota</option>
-          <option value="BMW">BMW</option>
-          <option value="Mercedes-Benz">Mercedes-Benz</option>
-          <option value="Volkswagen">Volkswagen</option>
-          <option value="Hyundai">Hyundai</option>
-          <option value="Kia">Kia</option>
-          <option value="Lada">Lada</option>
-          <option value="Renault">Renault</option>
-          <option value="Nissan">Nissan</option>
-          <option value="Ford">Ford</option>
+        <select id="carBrand" onchange="handleBrandChange()">
+          <option value="">Загрузка марок...</option>
         </select>
         <p id="brandHint" class="muted"></p>
 
         <label>Модель</label>
-        <input id="carModel" placeholder="Например, Camry" />
+        <select id="carModel" onchange="updateBrandHint()">
+          <option value="">Сначала выберите марку</option>
+        </select>
 
         <label>Текущий пробег, км</label>
         <input id="carMileage" type="number" placeholder="120000" />

@@ -565,3 +565,8 @@ footer {
     font-size: 30px;
   }
 }
+
+select:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
