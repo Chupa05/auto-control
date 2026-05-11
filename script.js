@@ -344,21 +344,11 @@ function toggleCustomIntervals() {
 }
 
 function updateBrandHint() {
-  const brand = document.getElementById('carBrand').value;
-  const model = document.getElementById('carModel').value;
-  const regulation = getDefaultRegulationForBrand(brand);
-
   const hint = document.getElementById('brandHint');
+
   if (!hint) return;
 
-  if (!brand) {
-    hint.textContent = 'Выберите марку, чтобы увидеть базовый интервал ТО.';
-    return;
-  }
-
-  hint.textContent = model
-    ? `Для ${brand} ${model} будет использован базовый интервал ТО: ${regulation.generalTO.toLocaleString('ru-RU')} км. Если в Firestore есть точный регламент для этой модели, сайт возьмёт его.`
-    : `Базовый интервал ТО для ${brand}: каждые ${regulation.generalTO.toLocaleString('ru-RU')} км`;
+  hint.textContent = '';
 }
 
 async function addCar() {
@@ -484,7 +474,7 @@ function renderGarage() {
       <div>
         <div class="plus-circle">+</div>
         <h3>Добавить автомобиль</h3>
-        <p class="muted">Марка и модель подтягиваются из автомобильной API-базы</p>
+        
       </div>
     </div>
   `;
